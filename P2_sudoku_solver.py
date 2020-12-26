@@ -114,6 +114,28 @@ def indirect_solve(d):
     ctr = 1
     while ctr > 0:
         ctr = 0
+        for i in range(1, 10):
+            box_d, box_num = {}, 'b' + str(i)
+            if box_num not in cstr_d: continue
+            for label in cstr_d[box_num]:
+                for pos in range(2):
+                    box_d[label[pos]] = box_d.setdefault(label[pos], []) + [label]
+            for line in box_d:
+                all_label_l = set(cstr_d[line])
+                other_label_l, other_label_b = all_label_l - set(box_d[line]), set(cstr_d[box_num]) - set(box_d[line])
+                all_cstr_l, other_cstr_l, other_cstr_b = set(), set(), set()
+                for x, y in zip((all_label_l, other_label_l, other_label_b), (all_cstr_l, other_cstr_l, other_cstr_b)):
+                    for label in x:
+                        y |= d['blank'][label]
+                locked = all_cstr_l - other_cstr_l
+                for e in locked: 
+                    if e in other_cstr_b: # deduction - locked candidate
+                        print('....has locked candidate')
+                        for label in other_label_b:
+                            if e in d['blank'][label]:
+                                d['blank'][label].remove(e)
+                                ctr += 1
+                                if has_update(d): return d
         for j in cstr_d:
             combi2 = list(combinations(cstr_d[j], 2))
             for k in combi2:
@@ -121,52 +143,44 @@ def indirect_solve(d):
                 intxn = x & y
                 if len(intxn) == 2:
                     if len(x) == len(y) == 2: # deduction - naked pair
-                        print('.......has naked pair')
+                        print('........has naked pair')
                         for label in (cstr_d[j] - set(k)):
                             for e in intxn:
                                 if e in d['blank'][label]:
-                                    assert d['blank'][label] == set()
                                     d['blank'][label].remove(e)
                                     ctr += 1
-                                    if has_update(d):
-                                        return d
+                                    if has_update(d): return d
                     other_label, other_cstr = cstr_d[j] - set(k), set()
                     for label in other_label:
                         other_cstr |= d['blank'][label]
                     if list(intxn)[0] not in other_cstr and list(intxn)[1] not in other_cstr: # deduction - hidden pair
-                        print('........has hidden pair')
+                        print('............has hidden pair')
                         diff = {tuple(x - intxn): k[0], tuple(y - intxn): k[1]}
                         for i in diff:
                             if len(i) != 0:
                                 for t in i:
                                     d['blank'][diff[i]].remove(t)
-                                    assert d['blank'][diff[i]] == set()
                                     ctr += 1
-                                    if has_update(d):
-                                        return d
+                                    if has_update(d): return d
             combi3 = list(combinations(cstr_d[j], 3))
             for k in combi3:
                 x, y, z = d['blank'][k[0]], d['blank'][k[1]], d['blank'][k[2]]
                 union_3 = x | y | z
                 if len(union_3) == 3: # deduction - naked triplet
-                    print('........has naked triplet')
-                    print(x, y, z)
-                    print(union_3)
+                    print('................has naked triplet')
                     for label in (cstr_d[j] - set(k)):
                             for e in union_3:
                                 if e in d['blank'][label]:
-                                    assert d['blank'][label] == set()
                                     d['blank'][label].remove(e)
                                     ctr += 1
-                                    if has_update(d):
-                                        return d
+                                    if has_update(d): return d
                 other_label, other_cstr, discard = cstr_d[j] - set(k), set(), {}
                 for label in other_label:
                     other_cstr |= d['blank'][label]
                 all_cstr = union_3 | other_cstr
                 union_diff = all_cstr - other_cstr
                 if len(union_diff) == 3: # deduction = hidden triplet
-                    print('........has hidden triplet')
+                    print('....................has hidden triplet')
                     for label, cstr in zip(k, (x, y, z)):
                         for e in cstr:
                             if e not in union_diff:
@@ -174,13 +188,13 @@ def indirect_solve(d):
                     for label, cstr in discard.items():
                         if len(cstr) != 0:
                             for num in cstr:
-                                assert d['blank'][label] == set()
                                 d['blank'][label].remove(num)
                                 ctr += 1
-                                if has_update(d):
-                                    return d
-    print(cstr_d)
-    print(d['blank'])
+                                if has_update(d): return d
+# TODO: indirect sovle func
+# TODO: take out func - cstr num to remove, label set for cstr, d; return ctr increment, d
+# TODO: take out func - label set 1, label set 2, d; return cstr diff (label set 2 default {} if no need to compare diff)
+# TODO: try to take out cstr part, only deal with label in cstr_d 
 
 def sudoku_solver(s, ref):
     d = make_sudoku_dict(s, ref['make_dict'])
@@ -192,7 +206,7 @@ def sudoku_solver(s, ref):
         ctr += 1
         if has_update(d):
             d = direct_solve(d, ref['update_dict'])
-    print('-----------------------------------deduction iteration:', ctr)
+    print('-----------------------------------deduction iteration:', ctr, '\n\n', 'Final Answer is:')
     return write_answer(s, d)
 
 if __name__ == '__main__':
@@ -200,7 +214,6 @@ if __name__ == '__main__':
     ref = ref_table()
     ans = sudoku_solver(s, ref)
     print(ans)
-
 
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
 
