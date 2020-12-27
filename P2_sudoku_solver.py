@@ -11,6 +11,18 @@ s= [[0, 0, 6,   0, 0, 7,   0, 0, 0],
     [0, 0, 9,   0, 8, 0,   0, 0, 7],
     [5, 3, 0,   0, 0, 0,   0, 0, 4]]
 
+# s= [[0, 0, 4,   9, 0, 5,   0, 8, 6], 
+#     [6, 5, 2,   7, 0, 8,   0, 3, 0],
+#     [8, 0, 9,   0, 3, 6,   0, 5, 0],
+
+#     [0, 0, 8,   0, 0, 4,   0, 2, 7],
+#     [0, 2, 6,   0, 5, 7,   0, 0, 0],
+#     [7, 4, 0,   8, 9, 2,   1, 6, 0],
+
+#     [0, 8, 0,   0, 7, 9,   6, 0, 2],
+#     [2, 9, 0,   0, 0, 1,   3, 0, 0],
+#     [4, 6, 0,   0, 0, 3,   0, 0, 0]]
+
 from itertools import combinations
 
 def ref_table():
@@ -109,6 +121,15 @@ def make_cstr_dict(d):
             cstr_d[i] = cstr_d.setdefault(i, set()) | {label}
     return cstr_d
 
+def eliminate(to_remove, remove_from, d): # 1st para is cstr set to be eliminated, 2nd is label set from which cstr is eliminated, 3rd is sudoku dict
+    ctr = 0
+    for el in to_remove:
+        for label in remove_from:
+            if el in d['blank'][label]:
+                d['blank'][label].remove(el)
+                ctr = 1
+    return ctr, d
+
 def indirect_solve(d):
     cstr_d = make_cstr_dict(d)
     ctr = 1
@@ -127,15 +148,12 @@ def indirect_solve(d):
                 for x, y in zip((all_label_l, other_label_l, other_label_b), (all_cstr_l, other_cstr_l, other_cstr_b)):
                     for label in x:
                         y |= d['blank'][label]
-                locked = all_cstr_l - other_cstr_l
-                for e in locked: 
-                    if e in other_cstr_b: # deduction - locked candidate
-                        print('....has locked candidate')
-                        for label in other_label_b:
-                            if e in d['blank'][label]:
-                                d['blank'][label].remove(e)
-                                ctr += 1
-                                if has_update(d): return d
+                locked = all_cstr_l - other_cstr_l # deduction - locked candidate
+                n, d = eliminate(locked, other_label_b, d)
+                if n == 1: print('....has locked candidate')
+                ctr += n
+                if has_update(d): 
+                    return d
         for j in cstr_d:
             combi2 = list(combinations(cstr_d[j], 2))
             for k in combi2:
@@ -143,37 +161,32 @@ def indirect_solve(d):
                 intxn = x & y
                 if len(intxn) == 2:
                     if len(x) == len(y) == 2: # deduction - naked pair
-                        print('........has naked pair')
-                        for label in (cstr_d[j] - set(k)):
-                            for e in intxn:
-                                if e in d['blank'][label]:
-                                    d['blank'][label].remove(e)
-                                    ctr += 1
-                                    if has_update(d): return d
+                        n, d = eliminate(intxn, cstr_d[j] - set(k), d)
+                        if n == 1: print('........has naked pair')
+                        ctr += n
+                        if has_update(d): 
+                            return d
                     other_label, other_cstr = cstr_d[j] - set(k), set()
                     for label in other_label:
                         other_cstr |= d['blank'][label]
-                    if list(intxn)[0] not in other_cstr and list(intxn)[1] not in other_cstr: # deduction - hidden pair
-                        print('............has hidden pair')
-                        diff = {tuple(x - intxn): k[0], tuple(y - intxn): k[1]}
-                        for i in diff:
-                            if len(i) != 0:
-                                for t in i:
-                                    d['blank'][diff[i]].remove(t)
-                                    ctr += 1
-                                    if has_update(d): return d
+                    if len(intxn & other_cstr) == 0 and (len(x) > 2 or len(y) > 2): # deduction - hidden pair
+                        print((x - intxn, y - intxn), k)
+                        for to_remove, remove_fr in zip((x - intxn, y - intxn), k):
+                            n, d = eliminate(to_remove, remove_fr, d)
+                            if n == 1: print('............has hidden pair')
+                            ctr += n
+                        if has_update(d): 
+                            return d
             combi3 = list(combinations(cstr_d[j], 3))
             for k in combi3:
                 x, y, z = d['blank'][k[0]], d['blank'][k[1]], d['blank'][k[2]]
                 union_3 = x | y | z
                 if len(union_3) == 3: # deduction - naked triplet
-                    print('................has naked triplet')
-                    for label in (cstr_d[j] - set(k)):
-                            for e in union_3:
-                                if e in d['blank'][label]:
-                                    d['blank'][label].remove(e)
-                                    ctr += 1
-                                    if has_update(d): return d
+                    n, d = eliminate(union_3, cstr_d[j] - set(k), d)
+                    if n == 1: print('................has naked triplet')
+                    ctr += n
+                    if has_update(d): 
+                        return d
                 other_label, other_cstr, discard = cstr_d[j] - set(k), set(), {}
                 for label in other_label:
                     other_cstr |= d['blank'][label]
@@ -191,8 +204,7 @@ def indirect_solve(d):
                                 d['blank'][label].remove(num)
                                 ctr += 1
                                 if has_update(d): return d
-# TODO: indirect sovle func
-# TODO: take out func - cstr num to remove, label set for cstr, d; return ctr increment, d
+# TODO: take out func - cstr num to remove, label set for cstr, d; return ctr increment, d --> done except hidden triplet
 # TODO: take out func - label set 1, label set 2, d; return cstr diff (label set 2 default {} if no need to compare diff)
 # TODO: try to take out cstr part, only deal with label in cstr_d 
 
