@@ -11,18 +11,6 @@ s= [[0, 0, 6,   0, 0, 7,   0, 0, 0],
     [0, 0, 9,   0, 8, 0,   0, 0, 7],
     [5, 3, 0,   0, 0, 0,   0, 0, 4]]
 
-# s= [[0, 0, 4,   9, 0, 5,   0, 8, 6], 
-#     [6, 5, 2,   7, 0, 8,   0, 3, 0],
-#     [8, 0, 9,   0, 3, 6,   0, 5, 0],
-
-#     [0, 0, 8,   0, 0, 4,   0, 2, 7],
-#     [0, 2, 6,   0, 5, 7,   0, 0, 0],
-#     [7, 4, 0,   8, 9, 2,   1, 6, 0],
-
-#     [0, 8, 0,   0, 7, 9,   6, 0, 2],
-#     [2, 9, 0,   0, 0, 1,   3, 0, 0],
-#     [4, 6, 0,   0, 0, 3,   0, 0, 0]]
-
 from itertools import combinations
 
 def ref_table():
@@ -130,26 +118,29 @@ def eliminate(to_remove, remove_from, d): # 1st para is cstr set to be eliminate
                 ctr = 1
     return ctr, d
 
+def union_n_diff(d, label_set1, label_set2=set()): # 1st para is sudoku dict, 2nd & 2rd para are label sets, return diff in cstr union of the 2 label sets
+    cstr1, cstr2 = set(), set()
+    for x, y in zip((label_set1, label_set2), (cstr1, cstr2)):
+        for label in x:
+            y |= d['blank'][label]
+    return cstr1 - cstr2
+
 def indirect_solve(d):
     cstr_d = make_cstr_dict(d)
     ctr = 1
     while ctr > 0:
         ctr = 0
         for i in range(1, 10):
-            box_d, box_num = {}, 'b' + str(i)
-            if box_num not in cstr_d: continue
-            for label in cstr_d[box_num]:
+            box_d, b_num = {}, 'b' + str(i)
+            if b_num not in cstr_d: continue
+            for label in cstr_d[b_num]:
                 for pos in range(2):
                     box_d[label[pos]] = box_d.setdefault(label[pos], []) + [label]
             for line in box_d:
-                all_label_l = set(cstr_d[line])
-                other_label_l, other_label_b = all_label_l - set(box_d[line]), set(cstr_d[box_num]) - set(box_d[line])
-                all_cstr_l, other_cstr_l, other_cstr_b = set(), set(), set()
-                for x, y in zip((all_label_l, other_label_l, other_label_b), (all_cstr_l, other_cstr_l, other_cstr_b)):
-                    for label in x:
-                        y |= d['blank'][label]
-                locked = all_cstr_l - other_cstr_l # deduction - locked candidate
-                n, d = eliminate(locked, other_label_b, d)
+                all_l, l_b = set(cstr_d[line]), set(box_d[line])
+                other_l, other_b = all_l - l_b, set(cstr_d[b_num]) - l_b
+                locked = union_n_diff(d, all_l, other_l) # deduction - locked candidate
+                n, d = eliminate(locked, other_b, d)
                 if n == 1: print('....has locked candidate')
                 ctr += n
                 if has_update(d): 
@@ -166,13 +157,10 @@ def indirect_solve(d):
                         ctr += n
                         if has_update(d): 
                             return d
-                    other_label, other_cstr = cstr_d[j] - set(k), set()
-                    for label in other_label:
-                        other_cstr |= d['blank'][label]
-                    if len(intxn & other_cstr) == 0 and (len(x) > 2 or len(y) > 2): # deduction - hidden pair
-                        print((x - intxn, y - intxn), k)
-                        for to_remove, remove_fr in zip((x - intxn, y - intxn), k):
-                            n, d = eliminate(to_remove, remove_fr, d)
+                    other = union_n_diff(d, cstr_d[j] - set(k))
+                    if len(intxn & other) == 0 and (len(x) > 2 or len(y) > 2): # deduction - hidden pair
+                        for to, fr in zip((x - intxn, y - intxn), ({k[0]}, {k[1]})):
+                            n, d = eliminate(to, fr, d)
                             if n == 1: print('............has hidden pair')
                             ctr += n
                         if has_update(d): 
@@ -187,26 +175,16 @@ def indirect_solve(d):
                     ctr += n
                     if has_update(d): 
                         return d
-                other_label, other_cstr, discard = cstr_d[j] - set(k), set(), {}
-                for label in other_label:
-                    other_cstr |= d['blank'][label]
-                all_cstr = union_3 | other_cstr
-                union_diff = all_cstr - other_cstr
-                if len(union_diff) == 3: # deduction = hidden triplet
-                    print('....................has hidden triplet')
-                    for label, cstr in zip(k, (x, y, z)):
-                        for e in cstr:
-                            if e not in union_diff:
-                                discard.setdefault(label, []) + [e]
-                    for label, cstr in discard.items():
-                        if len(cstr) != 0:
-                            for num in cstr:
-                                d['blank'][label].remove(num)
-                                ctr += 1
-                                if has_update(d): return d
-# TODO: take out func - cstr num to remove, label set for cstr, d; return ctr increment, d --> done except hidden triplet
-# TODO: take out func - label set 1, label set 2, d; return cstr diff (label set 2 default {} if no need to compare diff)
-# TODO: try to take out cstr part, only deal with label in cstr_d 
+                diff = union_n_diff(d, cstr_d[j], cstr_d[j] - set(k))
+                if len(diff) == 3: # deduction = hidden triplet
+                    for to, fr in zip((x - diff, y - diff, z - diff), ({k[0]}, {k[1]}, {k[1]})):
+                        n, d = eliminate(to, fr, d)
+                        if n == 1: print('....................has hidden triplet')
+                        ctr += n
+                        if has_update(d): 
+                            return d
+# * change done: added eliminate and union_n_diff func to shorten indirect solve func            
+# TODO: add 4 more rules: x-wing, xy-wing, xy-wing(w right angle), swordfish
 
 def sudoku_solver(s, ref):
     d = make_sudoku_dict(s, ref['make_dict'])
@@ -223,10 +201,12 @@ def sudoku_solver(s, ref):
 
 if __name__ == '__main__':
     pass
+
+    import time
+    start_time = time.time()
     ref = ref_table()
     ans = sudoku_solver(s, ref)
     print(ans)
+    print('---xx %.4fs seconds ---' % (time.time() - start_time))
 
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
-
-
