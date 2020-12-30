@@ -1,15 +1,15 @@
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
-s= [[0, 0, 6,   0, 0, 7,   0, 0, 0], 
-    [0, 0, 0,   9, 0, 0,   0, 0, 5],
-    [0, 5, 0,   0, 2, 0,   1, 0, 0],
+s= [[0, 0, 0,   0, 0, 0,   0, 0, 7], 
+    [6, 0, 0,   4, 2, 0,   0, 0, 0],
+    [0, 0, 4,   9, 0, 1,   0, 0, 3],
 
-    [0, 0, 0,   0, 0, 0,   5, 6, 0],
-    [0, 8, 0,   0, 7, 3,   0, 0, 0],
-    [9, 0, 0,   1, 0, 0,   0, 0, 0],
+    [0, 0, 0,   0, 0, 9,   7, 0, 0],
+    [0, 0, 6,   0, 0, 8,   4, 0, 0],
+    [8, 9, 1,   0, 0, 4,   0, 0, 0],
 
-    [8, 0, 0,   0, 0, 0,   0, 1, 3],
-    [0, 0, 9,   0, 8, 0,   0, 0, 7],
-    [5, 3, 0,   0, 0, 0,   0, 0, 4]]
+    [0, 0, 9,   0, 5, 6,   0, 1, 0],
+    [0, 0, 0,   0, 0, 0,   0, 0, 8],
+    [5, 0, 0,   0, 0, 0,   0, 0, 0]]
 
 from itertools import combinations
 
@@ -58,7 +58,7 @@ def update_sudoku_dict(d, ref):
     update = {}
     for label, cstr in d['blank'].items():
         if len(cstr) == 1:
-            update.setdefault(label, next(iter(cstr)))
+            update.setdefault(label, list(cstr)[0])
     print('blanks filled: ', len(update))
     d['ans'].update(update)
     for label in update:
@@ -130,7 +130,7 @@ def indirect_solve(d):
     ctr = 1
     while ctr > 0:
         ctr = 0
-        for i in range(1, 10):
+        for i in range(1, 10): # deduction - locked candidate
             box_d, b_num = {}, 'b' + str(i)
             if b_num not in cstr_d: continue
             for label in cstr_d[b_num]:
@@ -139,7 +139,7 @@ def indirect_solve(d):
             for line in box_d:
                 all_l, l_b = set(cstr_d[line]), set(box_d[line])
                 other_l, other_b = all_l - l_b, set(cstr_d[b_num]) - l_b
-                locked = union_n_diff(d, all_l, other_l) # deduction - locked candidate
+                locked = union_n_diff(d, all_l, other_l) 
                 n, d = eliminate(locked, other_b, d)
                 if n == 1: print('....has locked candidate')
                 ctr += n
@@ -183,8 +183,50 @@ def indirect_solve(d):
                         ctr += n
                         if has_update(d): 
                             return d
-# * change done: added eliminate and union_n_diff func to shorten indirect solve func            
-# TODO: add 4 more rules: x-wing, xy-wing, xy-wing(w right angle), swordfish
+        pair_d = {}
+        for i in range(1, 10):
+            pair_d.setdefault(i, {'r': {}, 'c': {}})
+        for j in cstr_d:
+            if j[0] == 'b': continue
+            combi2 = list(combinations(cstr_d[j], 2))
+            for k in combi2:
+                n = union_n_diff(d, cstr_d[j], cstr_d[j] - set(k))
+                if len(n) == 1:
+                    k, r_d, c_d = sorted(k), pair_d[list(n)[0]][k[0][0][0]], pair_d[list(n)[0]][k[0][1][0]]
+                    if k[0][0] == k[1][0]:
+                        r_d[(k[0][1][1], k[1][1][1])] = r_d.setdefault((k[0][1][1], k[1][1][1]), []) + [k]
+                    else:
+                        c_d[(k[0][0][1], k[1][0][1])] = c_d.setdefault((k[0][0][1], k[1][0][1]), []) + [k]
+        for num, val1 in pair_d.items():
+            for r_c, val2 in val1.items():
+                for pos, pair in val2.items():
+                    if len(pair) == 2: # deduction - x-wing
+                        line = list({'r', 'c'} - set(r_c))[0]
+                        remove_fr = cstr_d[line + pos[0]] | cstr_d[line + pos[1]] - set(pair[0]) | set(pair[1])
+                        n, d = eliminate(set([num]), remove_fr, d)
+                        if n == 1: print('....................has x-wing')
+                        ctr += n
+                        if has_update(d): 
+                            return d
+                    elif len(val2) > 2:
+                        combi3 = list(combinations(list(val2.keys()), 3))
+                        for k in combi3:
+                            uni = list(set(k[0]) | set(k[1]) | set(k[2]))
+                            if len(uni) == 3: # deduction - swordfish
+                                line = list({'r', 'c'} - set(r_c))[0]
+                                all_blank, multi_pair = set(), set()
+                                for i in range(3):
+                                    all_blank |= cstr_d[line + uni[i]]
+                                    multi_pair |= set(val2[k[i]][0])
+                                n, d = eliminate(set([num]), all_blank - multi_pair, d)
+                                if n == 1: print('........................has swordfish')
+                                ctr += n
+                                if has_update(d): 
+                                    return d
+
+# * change done: added 2 rules (x-wing, swordfish)           
+# TODO: add 2 more rules: xy-wing, xy-wing(w right angle); run test on large sudoku sample to find optimal rule sequence if any; add code to guess if none of the rules apply
+# ? with given rules, some paths result in solution while others not, to rerun the code multiple times if first round doesn't result in solution? or start guessing right away? run efficiency test 
 
 def sudoku_solver(s, ref):
     d = make_sudoku_dict(s, ref['make_dict'])
@@ -207,6 +249,6 @@ if __name__ == '__main__':
     ref = ref_table()
     ans = sudoku_solver(s, ref)
     print(ans)
-    print('---xx %.4fs seconds ---' % (time.time() - start_time))
+    print('--- runtime: %.3fs seconds ---' % (time.time() - start_time))
 
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
