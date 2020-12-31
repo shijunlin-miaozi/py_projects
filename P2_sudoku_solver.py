@@ -223,8 +223,21 @@ def indirect_solve(d):
                                 ctr += n
                                 if has_update(d): 
                                     return d
+        # label_set = set()
+        # for label, cstr in d['blank'].items():
+        #     if len(cstr) == 2:
+        #         label_set.add(label)
+        # for x, y, z in list(combinations(label_set, 3)):
+        #     if x[0] == y[0] == z[0] or x[1] == y[1] == z[1] or x[2] == y[2] == z[2]: continue
+        #     if len(union_n_diff(d, {x, y, z})) == 3 and d['blank'][x] != d['blank'][y] != d['blank'][z] != d['blank'][x]:
+        #         if x[2] != y[2] != z[2] != x[2]: # deduction - xy-wing (w right angle)
+        #             print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> k is: ', x, y, z)
+        #             for i in [x, y, z]:
+        #                 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> cstr is: ', d['blank'][i])
+                        
 
-# * change done: added 2 rules (x-wing, swordfish)           
+# * change done: start writing xy-wing           
+# TODO: shorten code in rules with itertools. combi func. for a, b, c in combi instead of for k in combi
 # TODO: add 2 more rules: xy-wing, xy-wing(w right angle); run test on large sudoku sample to find optimal rule sequence if any; add code to guess if none of the rules apply
 # ? with given rules, some paths result in solution while others not, to rerun the code multiple times if first round doesn't result in solution? or start guessing right away? run efficiency test 
 
