@@ -153,7 +153,7 @@ def union_n_diff(d, label_set1, label_set2=set()): # 1st para is sudoku dict, 2n
             y |= d['blank'][label]
     return cstr1 - cstr2
 
-def indirect_solve(d):
+def indirect_solve(d, ref):
     cstr_d = make_cstr_dict(d)
     ctr = 1
     while ctr > 0:
@@ -226,6 +226,20 @@ def indirect_solve(d):
                         c_d[(a[0][1], b[0][1])] = c_d.setdefault((a[0][1], b[0][1]), []) + [(a, b)]
         for num, val1 in pair_d.items():
             for r_c, val2 in val1.items():
+                if len(val2) > 2:
+                    for a, b, c in list(combinations(val2.keys(), 3)):
+                        uni = list(set(a) | set(b) | set(c))
+                        if len(uni) == 3: # deduction - swordfish
+                            line = list({'r', 'c'} - set(r_c))[0]
+                            all_blank, multi_pair, k = set(), set(), (a, b, c)
+                            for i, k in zip((0, 1, 2), (a, b, c)):
+                                all_blank |= cstr_d[line + uni[i]]
+                                multi_pair |= {val2[k][0][0], val2[k][0][1]}
+                            n, d = eliminate(set([num]), all_blank - multi_pair, d)
+                            if n == 1: print('........................has swordfish')
+                            ctr += n
+                            if has_update(d): 
+                                return d
                 for pos, pair in val2.items():
                     if len(pair) == 2: # deduction - x-wing
                         line = list({'r', 'c'} - set(r_c))[0]
@@ -235,44 +249,42 @@ def indirect_solve(d):
                         ctr += n
                         if has_update(d): 
                             return d
-                    elif len(val2) > 2:
-                        for a, b, c in list(combinations(list(val2.keys()), 3)):
-                            uni = list(set(a) | set(b) | set(c))
-                            if len(uni) == 3: # deduction - swordfish
-                                line = list({'r', 'c'} - set(r_c))[0]
-                                all_blank, multi_pair, k = set(), set(), (a, b, c)
-                                for i, k in zip((0, 1, 2), (a, b, c)):
-                                    all_blank |= cstr_d[line + uni[i]]
-                                    multi_pair |= {val2[k][0][0], val2[k][0][1]}
-                                # print('val2 is:\n', val2)
-                                # print(len(all_blank))
-                                # print(len(multi_pair))
-                                # print(a, b, c)
-                                # print(multi_pair)
-                                # print(len(all_blank - multi_pair))
-                                n, d = eliminate(set([num]), all_blank - multi_pair, d)
-                                print(n)
-                                if n == 1: print('........................has swordfish')
-                                ctr += n
-                                if has_update(d): 
-                                    return d
-        # label_set = set()
-        # for label, cstr in d['blank'].items():
-        #     if len(cstr) == 2:
-        #         label_set.add(label)
-        # for x, y, z in list(combinations(label_set, 3)):
-        #     if x[0] == y[0] == z[0] or x[1] == y[1] == z[1] or x[2] == y[2] == z[2]: continue
-        #     if len(union_n_diff(d, {x, y, z})) == 3 and d['blank'][x] != d['blank'][y] != d['blank'][z] != d['blank'][x]:
-        #         if x[2] != y[2] != z[2] != x[2]: # deduction - xy-wing (w right angle)
-        #             print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> k is: ', x, y, z)
-        #             for i in [x, y, z]:
-        #                 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> cstr is: ', d['blank'][i])
+        label_set = set() # deduction - xy-wing (w right angle)
+        for label, cstr in d['blank'].items():
+            if len(cstr) == 2:
+                label_set.add(label)
+        for a, b, c in list(combinations(label_set, 3)):
+            if a[0] == b[0] == c[0] or a[1] == b[1] == c[1] or a[2] == b[2] == c[2]: continue
+            if len(union_n_diff(d, {a, b, c})) == 3 and d['blank'][a] != d['blank'][b] != d['blank'][c] != d['blank'][a]:
+                lt, seen, dups, = [], set(), set()
+                for i in range(3):
+                    for k in [a, b, c]:
+                        lt.append(k[i])
+                dups = set(x for x in lt if x in seen or seen.add(x))
+                if len(dups) > 1:
+                    print('lt is: ', lt)
+                    print('duplicate is: ', dups)
+                    for k in [a, b, c]:
+                        if dups.issubset(set(k)):
+                            A = k
+                            print('A is: ', A)
+                            B, C = tuple({a, b, c} - {A})
+                            print('B, C are: ', B, C)
+                            to_remove = union_n_diff(d, {B}, {A})
+                            label1, label2 = ref[int(C[0][1]) - 1, int(B[1][1]) - 1], ref[int(B[0][1]) - 1, int(C[1][1]) - 1]
+                            # print(label1, label2)
+                            # print(to_remove, d['blank'][A], d['blank'][B], d['blank'][C])
+                    # n, d = eliminate(to_remove, remove_fr, d)
+                    # if n == 1: print('........................has xy-wing')
+                    # ctr += n
+                    # if has_update(d): 
+                    #     return d
 
 
 
-# * change done: add sole_poss func as part of direct solve; corrected x-wing and swordfish code; shorten code re combi func          
-# TODO: add 2 more rules: xy-wing, xy-wing(w right angle); run test on large sudoku sample to find optimal rule sequence if any; add code to guess if none of the rules apply
-# ? with given rules, some paths result in solution while others not, to rerun the code multiple times if first round doesn't result in solution? or start guessing right away? run efficiency test 
+# * change done: corrected x-wing and swordfish code        
+# TODO: add 1 more rules: xy-wing; run test on large sudoku sample to find optimal rule sequence if any; add code to guess if none of the rules apply
+
 
 def sudoku_solver(s, ref):
     d = make_sudoku_dict(s, ref['make_dict'])
@@ -281,7 +293,7 @@ def sudoku_solver(s, ref):
     d = direct_solve(d, ref['update_dict'])
     ctr = 0
     while not has_answer(d):
-        d = indirect_solve(d)
+        d = indirect_solve(d, ref['make_dict'])
         ctr += 1
         d = direct_solve(d, ref['update_dict'])
     print('-----------------------------------deduction iteration:', ctr, '\n\n', 'Final Answer is:')
