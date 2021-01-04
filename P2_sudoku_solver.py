@@ -1,47 +1,53 @@
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
-# s= [[0, 0, 0,   0, 0, 0,   0, 0, 7], 
-#     [6, 0, 0,   4, 2, 0,   0, 0, 0],
-#     [0, 0, 4,   9, 0, 1,   0, 0, 3],
+s= [[0, 4, 0,   0, 9, 0,   0, 0, 1], 
+    [8, 0, 0,   0, 4, 0,   0, 0, 6],
+    [0, 2, 0,   5, 0, 0,   3, 0, 0],
 
-#     [0, 0, 0,   0, 0, 9,   7, 0, 0],
-#     [0, 0, 6,   0, 0, 8,   4, 0, 0],
-#     [8, 9, 1,   0, 0, 4,   0, 0, 0],
+    [9, 1, 0,   0, 0, 0,   4, 0, 0],
+    [0, 0, 7,   0, 0, 2,   0, 0, 0],
+    [0, 0, 0,   0, 0, 7,   0, 8, 3],
 
-#     [0, 0, 9,   0, 5, 6,   0, 1, 0],
-#     [0, 0, 0,   0, 0, 0,   0, 0, 8],
-#     [5, 0, 0,   0, 0, 0,   0, 0, 0]] # solved
+    [0, 0, 9,   0, 6, 0,   0, 0, 0],
+    [0, 0, 0,   3, 0, 4,   5, 0, 0],
+    [0, 0, 8,   0, 0, 0,   0, 0, 0]] # unsolved (has xy-wing)
 
-s= [[4, 0, 0,   0, 0, 0,   0, 7, 8], 
-    [7, 0, 0,   1, 0, 0,   4, 0, 9],
-    [0, 0, 2,   3, 0, 0,   0, 0, 0],
+# s= [[8, 2, 1,   0, 3, 0,   0, 0, 0], 
+#     [0, 9, 0,   5, 2, 7,   0, 0, 0],
+#     [0, 5, 0,   9, 0, 1,   0, 6, 2],
 
-    [1, 0, 0,   4, 0, 6,   0, 0, 0],
-    [0, 6, 0,   0, 0, 0,   0, 0, 0],
-    [0, 4, 0,   0, 5, 3,   1, 0, 0],
+#     [0, 7, 0,   1, 0, 0,   3, 0, 0],
+#     [5, 0, 0,   0, 6, 0,   0, 0, 7],
+#     [0, 0, 9,   0, 0, 8,   0, 2, 0],
 
-    [0, 0, 0,   5, 0, 0,   0, 0, 0],
-    [8, 1, 3,   0, 0, 0,   0, 0, 7],
-    [0, 0, 0,   0, 2, 0,   0, 0, 0]] # unsolved
+#     [3, 6, 0,   4, 0, 5,   0, 7, 0],
+#     [0, 0, 0,   3, 9, 6,   0, 1, 0],
+#     [0, 0, 0,   0, 7, 0,   6, 4, 3]] # solved
+
+# s= [[4, 0, 0,   0, 0, 0,   0, 7, 8], 
+#     [7, 0, 0,   1, 0, 0,   4, 0, 9],
+#     [0, 0, 2,   3, 0, 0,   0, 0, 0],
+
+#     [1, 0, 0,   4, 0, 6,   0, 0, 0],
+#     [0, 6, 0,   0, 0, 0,   0, 0, 0],
+#     [0, 4, 0,   0, 5, 3,   1, 0, 0],
+
+#     [0, 0, 0,   5, 0, 0,   0, 0, 0],
+#     [8, 1, 3,   0, 0, 0,   0, 0, 7],
+#     [0, 0, 0,   0, 2, 0,   0, 0, 0]] # unsolved (rules cannot solve)
 
 from itertools import combinations
 
 def ref_table():
-    d = {'make_dict': {}, 'update_dict': {}}
+    d = {'row_index_to_label': {}, 'label_to_index_map': {}}
     for row in range(9):
-        if row in (0, 3, 6): base = '012'* 3
-        elif row in (1, 4, 7): base = '345'* 3
-        else: base = '678'* 3
+        base = '012'* 3 if row in (0, 3, 6) else '345'* 3 if row in (1, 4, 7) else '678'* 3
         for index in range(9):
-            if row < 3: b = (1, 2, 3)
-            elif row > 5: b = (7, 8, 9)
-            else: b = (4, 5, 6)
-            if index < 3: b = b[0]
-            elif index > 5: b = b[2]
-            else: b = b[1]
+            b = (1, 2, 3) if row < 3 else (7, 8, 9) if row > 5 else (4, 5, 6)
+            b = b[0] if index < 3 else b[2] if index > 5 else b[1]
             label = 'r' + str(row + 1), 'c' + str(index + 1), 'b' + str(b)
             mapping = index, row, int(base[index])
-            d['make_dict'].setdefault((row, index), label)
-            d['update_dict'].setdefault(label, mapping)
+            d['row_index_to_label'].setdefault((row, index), label)
+            d['label_to_index_map'].setdefault(label, mapping)
     return d
 
 def make_sudoku_dict(s, ref):
@@ -56,16 +62,9 @@ def make_sudoku_dict(s, ref):
     return d
 
 def calc_constraint(d):
-    base = {1, 2, 3, 4, 5, 6, 7, 8, 9}
     for label in d['blank']:
-        cstr = set()
-        for i in label:
-            for j in d[i]:
-                if j == 0: continue
-                cstr.add(j)
-        d['blank'][label] = base - cstr
-    if has_update(d): 
-        print('has update fr calc cstr')
+        cstr = set(j for i in label for j in d[i] if j != 0)
+        d['blank'][label] = {1, 2, 3, 4, 5, 6, 7, 8, 9} - cstr
     return d
 
 def update_sudoku_dict(d, ref):
@@ -83,23 +82,13 @@ def update_sudoku_dict(d, ref):
 
 def has_update(d):
     for val in d['blank'].values():
-        if len(val) == 1:
-            return True
+        if len(val) == 1: return True
     return False
 
 def final_check(d):
-    base = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     for i in d:
-        if i == 'blank' or i == 'ans': continue
-        lt = sorted(d[i])
-        if lt != base:
-            return False
+        if i != 'blank' and i != 'ans' and sorted(d[i]) != [1, 2, 3, 4, 5, 6, 7, 8, 9]: return False
     return True
-
-def has_answer(d):
-    if d['blank'] == {} and final_check(d):
-        return True
-    return False
 
 def write_answer(s, d):
     for label in d['ans']:
@@ -113,7 +102,7 @@ def make_cstr_dict(d):
         for i in label:
             cstr_d[i] = cstr_d.setdefault(i, set()) | {label}
     return cstr_d
-
+    
 def sole_poss(d):
     ctr = 0
     cstr_d = make_cstr_dict(d)
@@ -170,7 +159,7 @@ def indirect_solve(d, ref):
                 n, d = eliminate(union_n_diff(d, all_l, other_l), other_b, d)
                 if n == 1: print('....has locked candidate')
                 ctr += n
-                if has_update(d): 
+                if has_update(d):  
                     return d
         for j in cstr_d:
             for a, b in list(combinations(cstr_d[j], 2)):
@@ -192,13 +181,13 @@ def indirect_solve(d, ref):
                         if has_update(d): 
                             return d
             for a, b, c in list(combinations(cstr_d[j], 3)):
-                x, y, z = d['blank'][a], d['blank'][b], d['blank'][c]
+                x, y, z = tuple(d['blank'][i] for i in [a, b, c] )
                 uni = x | y | z
                 if len(uni) == 3: # deduction - naked triplet
                     n, d = eliminate(uni, cstr_d[j] - {a, b, c}, d)
                     if n == 1: print('................has naked triplet')
                     ctr += n
-                    if has_update(d): 
+                    if has_update(d):
                         return d
                 diff = union_n_diff(d, cstr_d[j], cstr_d[j] - {a, b, c})
                 if len(diff) == 3: # deduction = hidden triplet
@@ -210,7 +199,7 @@ def indirect_solve(d, ref):
                             return d
         d = sole_poss(d)
         if has_update(d): 
-            return d 
+            return d
         pair_d = {}
         for i in range(1, 10):
             pair_d.setdefault(i, {'r': {}, 'c': {}})
@@ -218,17 +207,26 @@ def indirect_solve(d, ref):
             if j[0] == 'b': continue
             for a, b in list(combinations(cstr_d[j], 2)):
                 n = union_n_diff(d, cstr_d[j], cstr_d[j] - {a, b})
-                if len(n) == 1:
+                if len(n) == 1 and n.issubset(d['blank'][a]) and n.issubset(d['blank'][b]):
                     [a, b], r_d, c_d = sorted([a, b]), pair_d[list(n)[0]]['r'], pair_d[list(n)[0]]['c']
-                    if a[0] == b[0]:
+                    if a[0] == b[0]: 
                         r_d[(a[1][1], b[1][1])] = r_d.setdefault((a[1][1], b[1][1]), []) + [(a, b)]
-                    else:
+                    else: 
                         c_d[(a[0][1], b[0][1])] = c_d.setdefault((a[0][1], b[0][1]), []) + [(a, b)]
+        #             print('a, b, n are: ', a, b, n)
+        #             print('a is: ', a, d['blank'][a])
+        #             print('b is: ', b, d['blank'][b])
+        #             for label in cstr_d[j]:
+        #                 print(label, d['blank'][label])
+        # print(pair_d)
         for num, val1 in pair_d.items():
             for r_c, val2 in val1.items():
                 if len(val2) > 2:
+                    # print('swordfish val2 is: ', val2)
                     for a, b, c in list(combinations(val2.keys(), 3)):
                         uni = list(set(a) | set(b) | set(c))
+                        # print('swordfish union is: ', uni)
+                        # print()
                         if len(uni) == 3: # deduction - swordfish
                             line = list({'r', 'c'} - set(r_c))[0]
                             all_blank, multi_pair, k = set(), set(), (a, b, c)
@@ -237,6 +235,18 @@ def indirect_solve(d, ref):
                                 multi_pair |= {val2[k][0][0], val2[k][0][1]}
                             n, d = eliminate(set([num]), all_blank - multi_pair, d)
                             if n == 1: print('........................has swordfish')
+                            # print('j is: ', j, d[j])
+                            # print('line is: ', line)
+                            # print('all blank cstr is: ', len(all_blank))
+                            # for label in sorted(all_blank):
+                            #     print(label, d['blank'][label])
+                            # print('val2.keys are: ', val2.keys())
+                            # print('a, b, c are: ', a, b, c)
+                            # for i in [a, b, c]:
+                            #     print(val2[i])
+                            # print('multi pairs are: ', len(multi_pair), multi_pair)
+                            # print('num is: ', num)
+                            # print('to remove fr: ', len(all_blank - multi_pair), all_blank - multi_pair)
                             ctr += n
                             if has_update(d): 
                                 return d
@@ -256,46 +266,45 @@ def indirect_solve(d, ref):
         for a, b, c in list(combinations(label_set, 3)):
             if a[0] == b[0] == c[0] or a[1] == b[1] == c[1] or a[2] == b[2] == c[2]: continue
             if len(union_n_diff(d, {a, b, c})) == 3 and d['blank'][a] != d['blank'][b] != d['blank'][c] != d['blank'][a]:
-                lt, seen, dups, = [], set(), set()
-                for i in range(3):
-                    for k in [a, b, c]:
-                        lt.append(k[i])
+                seen, lt = set(), [k[i] for k in [a, b, c] for i in range(3)]
                 dups = set(x for x in lt if x in seen or seen.add(x))
                 if len(dups) > 1:
-                    print('lt is: ', lt)
-                    print('duplicate is: ', dups)
-                    for k in [a, b, c]:
-                        if dups.issubset(set(k)):
-                            A = k
-                            print('A is: ', A)
-                            B, C = tuple({a, b, c} - {A})
-                            print('B, C are: ', B, C)
-                            to_remove = union_n_diff(d, {B}, {A})
-                            label1, label2 = ref[int(C[0][1]) - 1, int(B[1][1]) - 1], ref[int(B[0][1]) - 1, int(C[1][1]) - 1]
-                            # print(label1, label2)
-                            # print(to_remove, d['blank'][A], d['blank'][B], d['blank'][C])
-                    # n, d = eliminate(to_remove, remove_fr, d)
-                    # if n == 1: print('........................has xy-wing')
-                    # ctr += n
-                    # if has_update(d): 
-                    #     return d
+                    if 'b' not in str(dups):
+                        print('lt is: ', lt)
+                        print('duplicate is: ', dups)
+                        for k in [a, b, c]:
+                            if dups.issubset(set(k)):
+                                A, (B, C) = k, tuple({a, b, c} - {k})
+                        # TODO: elif statm - case when 2 pts in same box, 3rd pt in diff box must have same r or c as A
+                                print('A is: ', A, end='  ')
+                                print('A cstr is: ', d['blank'][A])
+                                print('B, C re: ', B, C, end='  ')
+                                print('B, C cstr are: ', d['blank'][B], d['blank'][C])
+                                print()
+                                label1, label2 = ref[int(C[0][1]) - 1, int(B[1][1]) - 1], ref[int(B[0][1]) - 1, int(C[1][1]) - 1]
+                                remove_fr = [x for x in [label1, label2] if x in d['blank'] and x != A]
+                                print('remove fr: ', remove_fr)
+                                print()
+                                n, d = eliminate(union_n_diff(d, {B}, {A}), remove_fr, d)
+                                if n == 1: print('........................has xy-wing')
+                                ctr += n
+                                if has_update(d): 
+                                    return d
+        # print(d)
 
-
-
-# * change done: corrected x-wing and swordfish code        
-# TODO: add 1 more rules: xy-wing; run test on large sudoku sample to find optimal rule sequence if any; add code to guess if none of the rules apply
-
+# * change done: confirmed x-wing is correct; corrected swordfish code but not confirmed; shortened some if and for statm using py one liner    
+# TODO: correct xy-wing rule; run test on large sudoku sample; add code to guess if none of the rules apply
 
 def sudoku_solver(s, ref):
-    d = make_sudoku_dict(s, ref['make_dict'])
+    d = make_sudoku_dict(s, ref['row_index_to_label'])
     d = calc_constraint(d)
     d = sole_poss(d)
-    d = direct_solve(d, ref['update_dict'])
+    d = direct_solve(d, ref['label_to_index_map'])
     ctr = 0
-    while not has_answer(d):
-        d = indirect_solve(d, ref['make_dict'])
+    while not (d['blank'] == {} and final_check(d)):
+        d = indirect_solve(d, ref['row_index_to_label'])
         ctr += 1
-        d = direct_solve(d, ref['update_dict'])
+        d = direct_solve(d, ref['label_to_index_map'])
     print('-----------------------------------deduction iteration:', ctr, '\n\n', 'Final Answer is:')
     return write_answer(s, d)
 
@@ -310,3 +319,4 @@ if __name__ == '__main__':
     print('--- runtime: %.3fs seconds ---' % (time.time() - start_time))
 
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
+
