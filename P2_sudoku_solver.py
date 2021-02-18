@@ -1,30 +1,18 @@
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
-s= [[4, 0, 0,   0, 0, 0,   0, 7, 8], 
-    [7, 0, 0,   1, 0, 0,   4, 0, 9],
-    [0, 0, 2,   3, 0, 0,   0, 0, 0],
+s= [[3, 0, 0,   0, 0, 0,   0, 2, 0], 
+    [1, 0, 2,   7, 0, 0,   8, 0, 4],
+    [0, 5, 0,   0, 3, 0,   0, 0, 0],
 
-    [1, 0, 0,   4, 0, 6,   0, 0, 0],
-    [0, 6, 0,   0, 0, 0,   0, 0, 0],
-    [0, 4, 0,   0, 5, 3,   1, 0, 0],
+    [0, 0, 0,   0, 8, 0,   0, 0, 0],
+    [0, 0, 0,   0, 0, 7,   0, 0, 1],
+    [0, 7, 4,   9, 6, 0,   0, 0, 3],
 
-    [0, 0, 0,   5, 0, 0,   0, 0, 0],
-    [8, 1, 3,   0, 0, 0,   0, 0, 7],
-    [0, 0, 0,   0, 2, 0,   0, 0, 0]] # solved with 12 guess
-
-# s= [[0, 0, 0,   4, 1, 0,   0, 0, 0], 
-#     [0, 8, 0,   7, 0, 0,   2, 0, 0],
-#     [0, 7, 0,   0, 0, 0,   0, 5, 0],
-
-#     [0, 0, 6,   0, 0, 0,   3, 0, 0],
-#     [2, 0, 0,   0, 9, 6,   0, 7, 0],
-#     [0, 0, 0,   0, 8, 4,   0, 0, 0],
-
-#     [5, 3, 0,   0, 0, 0,   8, 0, 4],
-#     [0, 0, 0,   0, 0, 9,   0, 6, 0],
-#     [0, 4, 0,   0, 0, 1,   0, 0, 0]] # solved with 9 guess
+    [7, 0, 0,   0, 0, 3,   0, 0, 0],
+    [0, 2, 0,   0, 0, 0,   0, 1, 0],
+    [0, 0, 9,   8, 5, 0,   0, 0, 0]] # solved with 14 guess
 
 from itertools import combinations
-import copy
+import copy, csv
 
 def ref_table():
     d = {'row_index_to_label': {}, 'label_to_index_map': {}}
@@ -60,7 +48,7 @@ def update_sudoku_dict(d, ref):
     update = {}
     for label, cstr in d['blank'].items():
         if len(cstr) == 1:
-            update.setdefault(label, list(cstr)[0])
+            update.setdefault(label, *cstr)
     print('blanks filled:   ', len(update))
     d['ans'].update(update)
     for label in update:
@@ -71,12 +59,14 @@ def update_sudoku_dict(d, ref):
 
 def has_update(d):
     for val in d['blank'].values():
-        if len(val) == 1: return True
+        if len(val) == 1: 
+            return True
     return False
 
 def final_check(d):
     for i in d:
-        if i != 'blank' and i != 'ans' and sorted(d[i]) != [1, 2, 3, 4, 5, 6, 7, 8, 9]: return False
+        if i != 'blank' and i != 'ans' and sorted(d[i]) != [1, 2, 3, 4, 5, 6, 7, 8, 9]: 
+            return False
     return True
 
 def write_answer(s, d):
@@ -109,13 +99,15 @@ def union_n_diff(d, label_set1, label_set2=set()): # 2nd & 2rd para are label se
     return cstr1 - cstr2
 
 def sole_poss(d): # confirm a blank when it contains a cstr num that does not appear in other blanks in a row, column or box
+    ctr = 1
     cstr_d = make_cstr_dict(d)
     for j in cstr_d:
         for label in cstr_d[j]:
             n = union_n_diff(d, cstr_d[j], cstr_d[j] - {label})
             if len(n) == 1 and len(d['blank'][label]) != 1:
                 d['blank'][label] = n
-                print('....................sole_poss')
+                ctr += 1
+    print('....................total sole_poss iter:', ctr)
     return d 
 
 def direct_solve(d, ref):
@@ -287,22 +279,23 @@ def sudoku_solver(s, ref):
                 print('guess iteration is: ', ctr)
                 return d1
             else: continue
-    i, guess = 0, [[]] # guess multiple blanks at same time
-    while i < len(lt):
-        guess = [y + [x] for x in lt[i][1] for y in guess]
-        for combi in guess:
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combi is: ', combi)
-            d1 = copy.deepcopy(d)
-            ctr += 1
-            print('ctr is: ', ctr)
-            for index, cstr in zip(range(i + 1), combi):
-                d1['blank'][lt[index][2]] = {cstr}
-                d1 = rule_only_solve(d1, ref)
-                if isinstance(d1, list):
-                    print('guess iteration is: ', ctr)
-                    return d1
-                else: continue
-        i += 1
+    # i, guess = 0, [[]] # guess multiple blanks at same time
+    # while i < len(lt):
+    #     guess = [y + [x] for x in lt[i][1] for y in guess]
+    #     for combi in guess:
+    #         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> combi is: ', combi)
+    #         d1 = copy.deepcopy(d)
+    #         ctr += 1
+    #         print('ctr is: ', ctr)
+    #         for index, cstr in zip(range(i + 1), combi):
+    #             d1['blank'][lt[index][2]] = {cstr}
+    #             d1 = rule_only_solve(d1, ref)
+    #             if isinstance(d1, list):
+    #                 print('guess iteration is: ', ctr)
+    #                 return d1
+    #             else: continue
+    #     i += 1
+    
 
 # * change done: added guess code
 # ? guess one blank at one time or multiple ones at one time? 
@@ -310,11 +303,28 @@ def sudoku_solver(s, ref):
 # TODO: run test on large sample
 
 if __name__ == '__main__':
+
+    # s = '004300209005009001070060043006002087190007400050083000600000105003508690042910300'
+    # s2 = '040100050107003960520008000000000017000906800803050620090060543600080700250097100'
+    # s3 = '600120384008459072000006005000264030070080006940003000310000050089700000502000190'
+
+    # s4 = '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
+
+    # sudoku = [list(map(int, s4[i : (i + 9)])) for i in range(9)]
+    # print(sudoku)
+
+
+    # lt = [line[0] for line in csv.reader(open('sudoku.csv'))]
+    # print(s_lt[:1])
+
+
+
     import time
     start_time = time.time()
     ref = ref_table()
     ans = sudoku_solver(s, ref)
     print(ans)
-    print('--- runtime: %.2fs seconds ---' % (time.time() - start_time))
+    # print('--- runtime: %.2fs seconds ---' % (time.time() - start_time))
+    print(f'--- runtime: {(time.time() - start_time): .2f} s seconds ---')
 
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
