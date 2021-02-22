@@ -1,29 +1,7 @@
-# >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
-
-class Indenter:
-    def __init__(self):
-        self.level = 0
-
-    def __enter__(self):
-        self.level += 1
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.level -= 1
-
-    def print(self, text):
-        print('    ' * self.level + text)
-
-
-with Indenter() as indent:
-    indent.print('hi!')
-    with indent:
-        indent.print('hello')
-        with indent:
-            indent.print('bonjour')
-    indent.print('hey')
-
-
+'''
+- 2 methods for context manager: class and function decorator
+- context manager below is for measuring execution time for a code block
+'''
 
 import time
 
@@ -32,12 +10,25 @@ class CatchTime:
         self.t = time.time()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.t = time.time() - self.t
+        print(f'execution time is: {self.t: .2f} secs')
 
-with CatchTime() as t:
-    time.sleep(1)
+with CatchTime():
+    time.sleep(0.5)
 
-print(t.t)
 
-# >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
+
+from contextlib import contextmanager
+
+@contextmanager
+def catch_time():
+    try:
+        t = time.time()
+        yield t
+    finally:
+        t = time.time() - t
+        print(f'execution time is: {t: .2f} secs')
+
+with catch_time():
+    time.sleep(0.5)
