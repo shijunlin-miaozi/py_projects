@@ -318,13 +318,16 @@ if __name__ == '__main__':
     # print(s_lt[:1])
 
 
-
+    # import cProfile
     import time
     start_time = time.time()
     ref = ref_table()
-    ans = sudoku_solver(s, ref)
+    ans = sudoku_solver(s, ref) 
+    # cProfile.run('sudoku_solver(s, ref)')
+
     print(ans)
     # print('--- runtime: %.2fs seconds ---' % (time.time() - start_time))
-    print(f'--- runtime: {(time.time() - start_time): .2f} s seconds ---')
+    # print(f'--- runtime: {(time.time() - start_time): .2f} s seconds ---')}
 
 # >>>>>>>>>>>>>>>>>>>>>>>> WORK IN PROGRESS >>>>>>>>>>>>>>>>>>>>>>>>>>
+
