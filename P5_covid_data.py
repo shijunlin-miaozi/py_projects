@@ -3,62 +3,53 @@ import pandas as pd
 import numpy as np
 import json
 from urllib.request import urlopen
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-# from selenium.webdriver.common.keys import Keys
-from unidecode import unidecode
 
-driver = webdriver.Chrome()
-# driver.implicitly_wait(10)
-
-driver.get('https://onemocneni-aktualne.mzcr.cz/covid-19')
-
-path_hosp = '//*[@id="main"]/div[3]/div[4]/div[7]/div[2]/div[1]/div'
-
-df = pd.read_html(driver.find_element(By.XPATH, path_hosp).get_attribute('outerHTML'))[0]
-print(df.info())
-driver.quit()
-# print(df.iloc[:, 1:3])
-
-# response = urlopen("https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/hospitalizace.json")
-# json_data = response.read().decode('utf-8', 'replace')
-
-# d = json.loads(json_data)
-# df = pd.json_normalize(d['data'])
-# df['datum'] = pd.to_datetime(df['datum'])
-# df = df.set_index('datum')
-
-# print (df.info())
-
-# # change figure size
-# print(plt.rcParams.get('figure.figsize'))
-fig_size = plt.rcParams["figure.figsize"]
-fig_size[0] = 10
-fig_size[1] = 5
-plt.rcParams["figure.figsize"] = fig_size
+# source data
+json_hosp = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/hospitalizace.json"
+json_infect = "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/nakazeni-vyleceni-umrti-testy.json"
 
 
-def plot_graph(x, y, xlabel, ylabel, title=''):
-    plt.plot(x, y, 'b')
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
-    # plt.xticks(rotation=90)
-    plt.show()
+def get_data(url):
+    response = urlopen(url)
+    json_data = response.read().decode('utf-8', 'replace')
+    d = json.loads(json_data)
+    df = pd.json_normalize(d['data'])
+    return df
 
-x = pd.to_datetime(df.iloc[:, 0])
-# y = pd.Series(unidecode(df.iloc[:, 1]).str.replace(' ', ''))
-y = df.iloc[:, 1].apply(lambda x: (unidecode(x).replace(' ','')))
-# pd.set_option("display.max_rows", None, "display.max_columns", None)
-# print(y)
-y = pd.to_numeric(y)
-xlabel = 'date'
-ylabel = 'no. of people hospitalised'
+d_hosp, d_infect = get_data(json_hosp), get_data(json_infect)
+df_date_hosp, df_hosp, df_severe = pd.to_datetime(d_hosp['datum']), d_hosp.iloc[:, 3], d_hosp.iloc[:, 7]
+df_date_infect, df_infect = pd.to_datetime(d_infect.iloc[34:, 0]), d_infect.iloc[34:, 1] - d_infect.iloc[34:, 2] - d_infect.iloc[34:, 3]
+df_hosp.index = df_infect.index = df_severe.index
+df_hosp_ratio = (df_hosp / df_infect)
+df_severe_ratio = (df_severe / df_hosp)
 
-
-# plot_graph(x, y, xlabel, ylabel)
+# pd.set_option('display.max_rows', None)
+# print(df_hosp_ratio)
+# print(df_severe_ratio)
 
 
-# s = pd.Series(['319', '2 489'])
-# s = pd.to_numeric(s.str.replace(' ', ''))
-# print(s)
+x = df_date_infect
+y1 = df_infect
+y2 = df_hosp
+y3 = df_severe
+y4 = df_hosp_ratio
+y5 = df_severe_ratio
+ylabel = 'no. of patients'
+
+
+fig, ax = plt.subplots(nrows=2, ncols=1, figsize = (15, 8))
+
+ax[0].plot(x, y1, 'y', label = "infected")
+ax[0].plot(x, y2, 'b', label = "hospitalised")
+ax[0].plot(x, y3, 'r', label = "severe/ICU")
+ax[1].plot(x, y4, 'b.', label = "ratio of hospitalised over infected")
+ax[1].plot(x, y5, 'r.', label = "ratio of severe/ICU over hospitalised")
+
+for ax0 in ax:
+    ax0.set(xlabel='date')
+    ax0.legend()
+
+ax[0].set(title="Covid Situation in Czech Republic", ylabel='no. of patients')
+ax[1].set(ylabel='ratio')
+
+plt.show()
